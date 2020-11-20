@@ -19,6 +19,10 @@ fn main() -> ! {
 
     // Setup and turn on green LED
     let mut green_pin = gpiob.pb5.into_push_pull_output();
+    let mut blue_pin = gpiob.pb6.into_push_pull_output();
+    let mut red_pin = gpiob.pb7.into_push_pull_output();
     green_pin.set_high().unwrap();
+    blue_pin.set_high().unwrap();
+    red_pin.set_high().unwrap();
     loop {}
 }
