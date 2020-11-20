@@ -26,3 +26,8 @@ fn main() -> ! {
     red_pin.set_high().unwrap();
     loop {}
 }
+
+#[allow(non_snake_case)]
+fn INTERRUPT() {
+    // handle button press
+}
