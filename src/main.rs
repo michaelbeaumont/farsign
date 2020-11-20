@@ -1,7 +1,11 @@
 #![no_main]
 #![no_std]
 
-use crate::hal::{gpio::*, pac, prelude::*};
+use crate::hal::{
+    gpio::*,
+    pac::{self, interrupt},
+    prelude::*,
+};
 use cortex_m_rt::entry;
 use panic_semihosting as _;
 use stm32l0xx_hal as hal;
@@ -24,4 +28,10 @@ fn main() -> ! {
     blue_pin.set_high().unwrap();
     red_pin.set_high().unwrap();
     loop {}
+}
+
+#[allow(non_snake_case)]
+#[interrupt]
+fn EXTI2_3() {
+    // disable LEDs
 }
