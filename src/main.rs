@@ -4,9 +4,14 @@
 mod status;
 
 use crate::hal::{gpio::*, pac, prelude::*};
+use core::cell::RefCell;
+use cortex_m::interrupt::Mutex;
 use cortex_m_rt::entry;
 use panic_semihosting as _;
 use stm32l0xx_hal as hal;
+
+static STATUS: Mutex<RefCell<Option<status::StatusLights<?, ?, ?>>>> =
+    Mutex::new(RefCell::new(None));
 
 #[entry]
 fn main() -> ! {
