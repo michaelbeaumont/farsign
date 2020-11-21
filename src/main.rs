@@ -1,6 +1,8 @@
 #![no_main]
 #![no_std]
 
+mod status;
+
 use crate::hal::{
     gpio::*,
     pac::{self, interrupt},
@@ -27,6 +29,7 @@ fn main() -> ! {
     green_pin.set_high().unwrap();
     blue_pin.set_high().unwrap();
     red_pin.set_high().unwrap();
+    let status = status::StatusLights::new(red_pin, green_pin, blue_pin);
     loop {}
 }
 
