@@ -14,7 +14,7 @@ use cortex_m_rt::entry;
 use panic_semihosting as _;
 use stm32l0xx_hal as hal;
 
-static STATUS: Mutex<RefCell<Option<status::StatusLights<?, ?, ?>>>> =
+static STATUS: Mutex<RefCell<Option<status::StatusLights<u64, u64, u64>>>> =
     Mutex::new(RefCell::new(None));
 
 #[entry]
@@ -35,6 +35,10 @@ fn main() -> ! {
     blue_pin.set_high().unwrap();
     red_pin.set_high().unwrap();
     let status = status::StatusLights::new(red_pin, green_pin, blue_pin);
+
+    cortex_m::interrupt::free(|cs| {
+        *STATUS.borrow(cs).borrow_mut() = Some(status);
+    });
     loop {}
 }
 
