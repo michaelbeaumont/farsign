@@ -10,7 +10,9 @@ use cortex_m_rt::entry;
 use panic_semihosting as _;
 use stm32l0xx_hal as hal;
 
-static STATUS: Mutex<RefCell<Option<status::StatusLights<u64, u64, u64>>>> =
+type PBOut = gpiob::PB<Output<PushPull>>;
+
+static STATUS: Mutex<RefCell<Option<status::StatusLights<PBOut, PBOut, PBOut>>>> =
     Mutex::new(RefCell::new(None));
 
 #[entry]
@@ -31,7 +33,11 @@ fn main() -> ! {
     green_pin.set_high().unwrap();
     blue_pin.set_high().unwrap();
     red_pin.set_high().unwrap();
-    let status = status::StatusLights::new(red_pin, green_pin, blue_pin);
+    let status = status::StatusLights::new(
+        red_pin.downgrade(),
+        green_pin.downgrade(),
+        blue_pin.downgrade(),
+    );
 
     cortex_m::interrupt::free(|cs| {
         *STATUS.borrow(cs).borrow_mut() = Some(status);
