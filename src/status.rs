@@ -19,4 +19,10 @@ impl<R: OutputPin<Error = Void>, G: OutputPin<Error = Void>, B: OutputPin<Error 
         self.green.set_low().unwrap();
         self.blue.set_high().unwrap();
     }
+
+    pub fn off(&mut self) {
+        self.red.set_low().unwrap();
+        self.green.set_low().unwrap();
+        self.blue.set_low().unwrap();
+    }
 }

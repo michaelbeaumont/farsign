@@ -47,5 +47,10 @@ fn main() -> ! {
 
 #[allow(non_snake_case)]
 fn INTERRUPT() {
-    // handle button press
+    cortex_m::interrupt::free(|cs| {
+        let mut status = STATUS.borrow(cs).borrow_mut();
+        status.as_mut().unwrap().off();
+        for _ in 0..10000 {}
+        status.as_mut().unwrap().on_short();
+    })
 }
