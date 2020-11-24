@@ -3,9 +3,16 @@
 
 mod status;
 
-use crate::hal::{gpio::*, pac, prelude::*};
+use crate::hal::{
+    exti::{Exti, ExtiLine, GpioLine, TriggerEdge},
+    gpio::*,
+    pac::{self, interrupt},
+    prelude::*,
+    syscfg,
+};
 use core::cell::RefCell;
 use cortex_m::interrupt::Mutex;
+use cortex_m::peripheral::NVIC;
 use cortex_m_rt::entry;
 use panic_semihosting as _;
 use stm32l0xx_hal as hal;
@@ -42,11 +49,23 @@ fn main() -> ! {
     cortex_m::interrupt::free(|cs| {
         *STATUS.borrow(cs).borrow_mut() = Some(status);
     });
+
+    let button = gpiob.pb2.into_pull_up_input();
+    let mut exti = Exti::new(dp.EXTI);
+    let mut syscfg = syscfg::SYSCFG::new(dp.SYSCFG, &mut rcc);
+    let line = GpioLine::from_raw_line(button.pin_number()).unwrap();
+    exti.listen_gpio(&mut syscfg, button.port(), line, TriggerEdge::Both);
+
+    unsafe {
+        NVIC::unmask(line.interrupt());
+    }
+
     loop {}
 }
 
 #[allow(non_snake_case)]
-fn INTERRUPT() {
+#[interrupt]
+fn EXTI2_3() {
     cortex_m::interrupt::free(|cs| {
         let mut status = STATUS.borrow(cs).borrow_mut();
         status.as_mut().unwrap().off();
