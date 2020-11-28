@@ -21,6 +21,7 @@ type PBOut = gpiob::PB<Output<PushPull>>;
 
 static STATUS: Mutex<RefCell<Option<status::StatusLights<PBOut, PBOut, PBOut>>>> =
     Mutex::new(RefCell::new(None));
+static BUTTON: Mutex<RefCell<Option<gpiob::PB2<Input<PullUp>>>>> = Mutex::new(RefCell::new(None));
 
 #[entry]
 fn main() -> ! {
@@ -46,15 +47,16 @@ fn main() -> ! {
         blue_pin.downgrade(),
     );
 
-    cortex_m::interrupt::free(|cs| {
-        *STATUS.borrow(cs).borrow_mut() = Some(status);
-    });
-
     let button = gpiob.pb2.into_pull_up_input();
     let mut exti = Exti::new(dp.EXTI);
     let mut syscfg = syscfg::SYSCFG::new(dp.SYSCFG, &mut rcc);
     let line = GpioLine::from_raw_line(button.pin_number()).unwrap();
     exti.listen_gpio(&mut syscfg, button.port(), line, TriggerEdge::Both);
+
+    cortex_m::interrupt::free(|cs| {
+        *STATUS.borrow(cs).borrow_mut() = Some(status);
+        *BUTTON.borrow(cs).borrow_mut() = Some(button);
+    });
 
     unsafe {
         NVIC::unmask(line.interrupt());
@@ -67,6 +69,8 @@ fn main() -> ! {
 #[interrupt]
 fn EXTI2_3() {
     cortex_m::interrupt::free(|cs| {
+        let pin_number = BUTTON.borrow(cs).borrow().as_ref().unwrap().pin_number();
+        Exti::unpend(GpioLine::from_raw_line(pin_number).unwrap());
         let mut status = STATUS.borrow(cs).borrow_mut();
         status.as_mut().unwrap().off();
         for _ in 0..10000 {}
