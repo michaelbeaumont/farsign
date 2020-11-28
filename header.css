@@ -1,0 +1,40 @@
+div#top-link {
+  position: sticky;
+  top: 1em;
+  left: 1em;
+  margin-left: -3em;
+  float: left;
+}
+div#top-link a {
+  text-decoration: none;
+}
+header {
+  flex: 0 0 100%;
+  margin-bottom: 3em;
+  text-align: center;
+}
+header p.date {
+  opacity: 0.5;
+  text-align: left;
+}
+header.website {
+  display: flex;
+  font-family: bold;
+  margin-bottom: 1em;
+  text-align: left;
+  justify-content: space-between;
+}
+header.website .title {
+  font-size: 2em;
+}
+header.website .link {
+  font-size: 1.2em;
+  align-self: flex-end;
+  margin-right: 1em;
+}
+header.website .link:not(:last-child) {
+  margin-left: auto;
+}
+header.website .suffix {
+  opacity: 0.5;
+}
