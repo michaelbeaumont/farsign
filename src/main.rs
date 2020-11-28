@@ -69,11 +69,18 @@ fn main() -> ! {
 #[interrupt]
 fn EXTI2_3() {
     cortex_m::interrupt::free(|cs| {
-        let pin_number = BUTTON.borrow(cs).borrow().as_ref().unwrap().pin_number();
+        let (pin_number, is_low) = BUTTON
+            .borrow(cs)
+            .borrow()
+            .as_ref()
+            .map(|p| (p.pin_number(), p.is_low().unwrap()))
+            .unwrap();
         Exti::unpend(GpioLine::from_raw_line(pin_number).unwrap());
         let mut status = STATUS.borrow(cs).borrow_mut();
-        status.as_mut().unwrap().off();
-        for _ in 0..10000 {}
-        status.as_mut().unwrap().on_short();
+        if is_low {
+            status.as_mut().unwrap().off();
+        } else {
+            status.as_mut().unwrap().on_short();
+        }
     })
 }
