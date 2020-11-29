@@ -35,7 +35,7 @@ board, using the radio and the display, and taking advantage of interrupts and t
 We'll be using a [B-L072Z-LRWAN1 discovery board][discovery-board] with a 2.9-inch, three-color ePaper
 display from Waveshare.
 
-![SOS](media/send_full.webm){width=100%}
+![SOS](media/send_full.webm){width=100% data-external=1}
 
 Yes, three-color ePaper really is that slow.
 
@@ -420,6 +420,6 @@ need to check the level of our pin in our interrupt.
 That may seem like a lot of code for turning off and on an LED but it will serve as
 the basis for the rest of our project.
 
-![Blinky button](media/off_on.webm){width=100%}
+![Blinky button](media/off_on.webm){width=100% data-external=1}
 
 In [the next installment][next] we're going to look at using our ePaper display.

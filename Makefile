@@ -9,6 +9,7 @@ pages:
 	  pagename="$$(basename $${post%.md})"; \
 	  pandoc $${post} \
 	    --include-before-body=header.html \
+	    --resource-path=.:docs \
 	    --css=header.css \
 	    --defaults=$${tmpdef} \
 	    -o "docs/$${pagename}.html"; \
