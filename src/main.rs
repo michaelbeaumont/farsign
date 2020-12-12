@@ -5,6 +5,7 @@ mod epaper;
 mod status;
 
 use crate::hal::{
+    delay,
     exti::{Exti, ExtiLine, GpioLine, TriggerEdge},
     gpio::*,
     pac::{self, interrupt},
@@ -27,6 +28,7 @@ static BUTTON: Mutex<RefCell<Option<gpiob::PB2<Input<PullUp>>>>> = Mutex::new(Re
 #[entry]
 fn main() -> ! {
     // Get one-time access to our peripherals
+    let cp = cortex_m::Peripherals::take().unwrap();
     let dp = pac::Peripherals::take().unwrap();
 
     // Configure the clock at the default speed
@@ -49,6 +51,8 @@ fn main() -> ! {
         blue_pin.downgrade(),
     );
 
+    // Because SysTick is universal to Cortex-M chips it's provided by the `cortex_m` crate
+    let syst_delay = delay::Delay::new(cp.SYST, rcc.clocks);
     let (spi, epd) = epaper::init(
         dp.SPI2,
         gpiob.pb13,
@@ -58,7 +62,7 @@ fn main() -> ! {
         gpioa.pa10.into_push_pull_output(),
         gpioa.pa8.into_push_pull_output(),
         &mut rcc,
-        delay,
+        syst_delay,
     );
 
     let button = gpiob.pb2.into_pull_up_input();
