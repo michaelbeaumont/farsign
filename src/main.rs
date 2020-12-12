@@ -32,7 +32,8 @@ fn main() -> ! {
     // Configure the clock at the default speed
     let mut rcc = dp.RCC.freeze(hal::rcc::Config::default());
 
-    // Get access to the GPIO B port
+    // Get access to the GPIO A & B ports
+    let gpioa = dp.GPIOA.split(&mut rcc);
     let gpiob = dp.GPIOB.split(&mut rcc);
 
     // Setup and turn on green LED
@@ -46,6 +47,18 @@ fn main() -> ! {
         red_pin.downgrade(),
         green_pin.downgrade(),
         blue_pin.downgrade(),
+    );
+
+    let (spi, epd) = epaper::init(
+        dp.SPI2,
+        gpiob.pb13,
+        gpiob.pb15,
+        gpiob.pb12,
+        gpioa.pa2.into_floating_input(),
+        gpioa.pa10.into_push_pull_output(),
+        gpioa.pa8.into_push_pull_output(),
+        &mut rcc,
+        delay,
     );
 
     let button = gpiob.pb2.into_pull_up_input();
