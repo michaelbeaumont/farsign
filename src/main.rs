@@ -53,7 +53,7 @@ fn main() -> ! {
 
     // Because SysTick is universal to Cortex-M chips it's provided by the `cortex_m` crate
     let syst_delay = delay::Delay::new(cp.SYST, rcc.clocks);
-    let (spi, epd) = epaper::init(
+    let (mut spi, mut epd) = epaper::init(
         dp.SPI2,
         gpiob.pb13,
         gpiob.pb15,
@@ -64,6 +64,7 @@ fn main() -> ! {
         &mut rcc,
         syst_delay,
     );
+    epaper::display_startup(&mut spi, &mut epd);
 
     let button = gpiob.pb2.into_pull_up_input();
     let mut exti = Exti::new(dp.EXTI);
