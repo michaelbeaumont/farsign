@@ -1,6 +1,7 @@
 #![no_main]
 #![no_std]
 
+mod epaper;
 mod status;
 
 use crate::hal::{
