@@ -261,7 +261,7 @@
 </header>
 <article>
 <section>
-<p>In the <a href="embedded-rust-with-lorawan-and-epaper-1.html">previous post</a>, we got our discovery board lighting up on button presses using GPIO interrupts. Next I want to introduce our first peripheral device, our ePaper display.</p>
+<p>In the <a href="embedded-rust-with-lorawan-and-epaper-1">previous post</a>, we got our discovery board lighting up on button presses using GPIO interrupts. Next I want to introduce our first peripheral device, our ePaper display.</p>
 <p>I chose the <a href="https://www.waveshare.com/product/displays/e-paper/epaper-2/2.9inch-e-paper-module-b.htm">2.9 inch three color ePaper module from Waveshare</a> for this project, mostly because a color ePaper display is pretty cool and I wanted to try it out. Be aware, they are very slow.</p>
 <p>In order to communiate with the display, we’ll use <a href="https://en.wikipedia.org/wiki/Serial_Peripheral_Interface"><strong>SPI</strong></a>, a <em>synchronous</em> (synchronized to a clock signal), <em>serial</em> (one bit at a time) communication protocol running on four wires. SPI is extremely common protocol on embedded systems for communicating with peripherals. The radio transceiver on our discovery board is connected to our microcontroller via SPI as well.</p>
 <p>SPI designates two lines, one for each device, for transmitting data (<code>MOSI</code> and <code>MISO</code>). It uses one line for clock synchronization (<code>SCK</code>) and one for notifying the device we’re going to send data (<code>CS</code>) to it. Because we have a <em>display</em> with one way communication, we only use one of the data lines (<code>MOSI</code>) and simply set <code>CS</code> to active when we want to transmit data.</p>
