@@ -1,5 +1,5 @@
 ---
-title: Embedded Rust with LoRaWAN and ePaper - GPIO & Interrupts
+title: Embedded Rust with LoRa and ePaper - GPIO & Interrupts
 date: "Nov. 29, 2020"
 repo: "https://github.com/michaelbeaumont/farsign"
 series: 1
@@ -12,7 +12,7 @@ issue: 1
 [discovery-manual]: https://www.st.com/resource/en/user_manual/dm00329995-discovery-kit-for-lorawan-sigfox-and-lpwan-protocols-with-stm32l0-stmicroelectronics.pdf "discovery board manual"
 [uc-datasheet]: https://www.st.com/resource/en/datasheet/stm32l072v8.pdf "Microcontroller datasheet"
 [uc-reference]: https://www.st.com/resource/en/reference_manual/dm00108281-ultralowpower-stm32l0x2-advanced-armbased-32bit-mcus-stmicroelectronics.pdf "Microcontroller reference manual"
-[what-is-lorawan]: https://lora-alliance.org/resource-hub/what-lorawanr
+[what-is-lora]: https://www.semtech.com/lora/what-is-lora
 [embedded-book]: https://rust-embedded.github.io/book
 
 Embedded Rust is ready; high-quality, production software is being written on industry-standard
@@ -24,7 +24,7 @@ started to more immediate embedded Rust.
 We're going to use Rust to code up a device that takes advantage of multiple hardware
 peripherals including a display and a radio module. It will be able
 to broadcast and receive morse code messages using low-power, long range radio
-([LoRaWAN][what-is-lorawan]) as well as
+([LoRa][what-is-lora]) as well as
 display them on an ePaper screen.
 
 The plan is to first build up a prototype running on a discovery board,

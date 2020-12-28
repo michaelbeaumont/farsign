@@ -1,5 +1,5 @@
 ---
-title: Embedded Rust with LoRaWAN and ePaper - Display
+title: Embedded Rust with LoRa and ePaper - Display
 date: "Dec. 12, 2020"
 repo: "https://github.com/michaelbeaumont/farsign"
 series: 2
@@ -12,7 +12,6 @@ issue: 2
 [discovery-manual]: https://www.st.com/resource/en/user_manual/dm00329995-discovery-kit-for-lorawan-sigfox-and-lpwan-protocols-with-stm32l0-stmicroelectronics.pdf "discovery board manual"
 [uc-datasheet]: https://www.st.com/resource/en/datasheet/stm32l072v8.pdf "Microcontroller datasheet"
 [uc-reference]: https://www.st.com/resource/en/reference_manual/dm00108281-ultralowpower-stm32l0x2-advanced-armbased-32bit-mcus-stmicroelectronics.pdf "Microcontroller reference manual"
-[what-is-lorawan]: https://lora-alliance.org/resource-hub/what-lorawanr
 [embedded-book]: https://rust-embedded.github.io/book
 [epaper-page]: https://www.waveshare.com/product/displays/e-paper/epaper-2/2.9inch-e-paper-module-b.htm
 [epaper-wiki]: https://www.waveshare.com/wiki/2.9inch_e-Paper_Module_(B)
