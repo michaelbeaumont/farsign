@@ -6,7 +6,7 @@ series: 1
 issue: 1
 ...
 
-[next]: embedded-rust-with-lorawan-and-epaper-2.html
+[next]: embedded-rust-with-lorawan-and-epaper-2
 [discovery-board]: https://www.st.com/en/evaluation-tools/b-l072z-lrwan1.html "Discovery board"
 [repo]: https://github.com/michaelbeaumont/farsign
 [discovery-manual]: https://www.st.com/resource/en/user_manual/dm00329995-discovery-kit-for-lorawan-sigfox-and-lpwan-protocols-with-stm32l0-stmicroelectronics.pdf "discovery board manual"
