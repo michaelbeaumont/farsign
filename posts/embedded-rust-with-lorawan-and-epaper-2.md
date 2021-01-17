@@ -7,6 +7,7 @@ issue: 2
 ...
 
 [previous]: embedded-rust-with-lorawan-and-epaper-1
+[next]: embedded-rust-with-lorawan-and-epaper-3
 [discovery-board]: https://www.st.com/en/evaluation-tools/b-l072z-lrwan1.html "Discovery board"
 [repo]: https://github.com/michaelbeaumont/farsign
 [discovery-manual]: https://www.st.com/resource/en/user_manual/dm00329995-discovery-kit-for-lorawan-sigfox-and-lpwan-protocols-with-stm32l0-stmicroelectronics.pdf "discovery board manual"
@@ -259,5 +260,5 @@ or for red/yellow pixels.
 
 ![Display startup (initial startup time of ~15 seconds trimmed)](media/epaper_startup.webm){width=100% data-external=1}
 
-That's a wrap for our second post! Next I'm going to either explore translating our
-button presses to Morse code or using our radio.
+That's a wrap for our second post! Next I'm going to either [explore translating our
+button presses to Morse code][next] or using our radio.

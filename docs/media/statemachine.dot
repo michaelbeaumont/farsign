@@ -1,0 +1,35 @@
+digraph G {
+  node[fontname="Helvetica",penwidth=2];
+  edge[fontname="Helvetica",penwidth=2];
+  bgcolor="#00000000";
+  rankdir="LR";
+  ranksep=-1;
+  nodesep=0;
+ 
+  idle[label="Idle/𝑤/ε",shape="doublecircle"];
+  { rank=same;
+    s_empty[label="Green/𝑤/ε"];
+    l_empty[label="Blue/𝑤/ε"];
+    t[label="Red/𝑤/ε"];
+  }
+  waiting[label="Waiting/𝑤/𝑣"];
+  { rank=same;
+    s[label="Green/𝑤/𝑣"];
+    l[label="Blue/𝑤/𝑣"];
+  }
+
+  idle->s_empty[label="press"];
+  t->idle[label="release/transmit,𝑤:=ε"];
+  waiting->idle[label="very long/𝑤:=𝑤⋅lookup(𝑣)"];
+
+  s_empty->l_empty[label="long     "];
+  l_empty->t[label="very long             "];
+
+  s_empty->waiting[label="release/𝑣:=•"];
+  l_empty->waiting[label="release/𝑣:=−"];
+
+  s->l[label="long      "];
+  waiting->s[label="press"];
+  l->waiting[label="release/𝑣:=𝑣−"];
+  s->waiting[label="release/𝑣:=𝑣•"];
+}
