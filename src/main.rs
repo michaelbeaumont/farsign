@@ -2,13 +2,14 @@
 #![no_std]
 
 mod epaper;
+mod machine;
 mod status;
 
 use crate::hal::{
     delay,
     exti::{Exti, ExtiLine, GpioLine, TriggerEdge},
     gpio::*,
-    pac::{self, interrupt},
+    pac::{self, interrupt, Interrupt},
     prelude::*,
     syscfg,
 };
@@ -24,6 +25,7 @@ type PBOut = gpiob::PB<Output<PushPull>>;
 static STATUS: Mutex<RefCell<Option<status::StatusLights<PBOut, PBOut, PBOut>>>> =
     Mutex::new(RefCell::new(None));
 static BUTTON: Mutex<RefCell<Option<gpiob::PB2<Input<PullUp>>>>> = Mutex::new(RefCell::new(None));
+static MORSE: Mutex<RefCell<Option<machine::MorseMachine>>> = Mutex::new(RefCell::new(None));
 
 #[entry]
 fn main() -> ! {
@@ -39,12 +41,9 @@ fn main() -> ! {
     let gpiob = dp.GPIOB.split(&mut rcc);
 
     // Setup and turn on green LED
-    let mut green_pin = gpiob.pb5.into_push_pull_output();
-    let mut blue_pin = gpiob.pb6.into_push_pull_output();
-    let mut red_pin = gpiob.pb7.into_push_pull_output();
-    green_pin.set_high().unwrap();
-    blue_pin.set_high().unwrap();
-    red_pin.set_high().unwrap();
+    let green_pin = gpiob.pb5.into_push_pull_output();
+    let blue_pin = gpiob.pb6.into_push_pull_output();
+    let red_pin = gpiob.pb7.into_push_pull_output();
     let status = status::StatusLights::new(
         red_pin.downgrade(),
         green_pin.downgrade(),
@@ -75,6 +74,7 @@ fn main() -> ! {
     cortex_m::interrupt::free(|cs| {
         *STATUS.borrow(cs).borrow_mut() = Some(status);
         *BUTTON.borrow(cs).borrow_mut() = Some(button);
+        *MORSE.borrow(cs).borrow_mut() = Some(machine::MorseMachine::new());
     });
 
     unsafe {
@@ -82,6 +82,18 @@ fn main() -> ! {
     }
 
     loop {}
+}
+
+#[allow(non_snake_case)]
+#[interrupt]
+fn TIM2() {
+    cortex_m::interrupt::free(|cs| {
+        let mut mm = MORSE.borrow(cs).borrow_mut();
+        let mut status = STATUS.borrow(cs).borrow_mut();
+        if let Some(state_change) = mm.as_mut().unwrap().tick() {
+            // handle state_change
+        }
+    })
 }
 
 #[allow(non_snake_case)]
@@ -95,11 +107,12 @@ fn EXTI2_3() {
             .map(|p| (p.pin_number(), p.is_low().unwrap()))
             .unwrap();
         Exti::unpend(GpioLine::from_raw_line(pin_number).unwrap());
+        let mut mm = MORSE.borrow(cs).borrow_mut();
         let mut status = STATUS.borrow(cs).borrow_mut();
         if is_low {
-            status.as_mut().unwrap().off();
+            mm.as_mut().unwrap().press();
         } else {
-            status.as_mut().unwrap().on_short();
+            mm.as_mut().unwrap().release();
         }
     })
 }
