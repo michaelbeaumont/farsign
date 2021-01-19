@@ -1,6 +1,11 @@
-pub struct MorseMachine {}
+#[derive(PartialEq, Eq)]
+pub enum StateChange {
+    LongPress,
+    Transmit,
+    NewLetter(u8),
+}
 
-pub enum StateChange {}
+pub struct MorseMachine {}
 
 impl MorseMachine {
     pub fn new() -> Self {
