@@ -14,7 +14,19 @@ impl<R: OutputPin<Error = Void>, G: OutputPin<Error = Void>, B: OutputPin<Error 
         StatusLights { red, green, blue }
     }
 
+    pub fn busy(&mut self) {
+        self.red.set_high().unwrap();
+        self.green.set_low().unwrap();
+        self.blue.set_low().unwrap();
+    }
+
     pub fn on_short(&mut self) {
+        self.red.set_low().unwrap();
+        self.green.set_high().unwrap();
+        self.blue.set_low().unwrap();
+    }
+
+    pub fn on_long(&mut self) {
         self.red.set_low().unwrap();
         self.green.set_low().unwrap();
         self.blue.set_high().unwrap();
