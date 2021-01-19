@@ -50,6 +50,8 @@ fn main() -> ! {
         blue_pin.downgrade(),
     );
 
+    let timer = dp.TIM2.timer(100.hz(), &mut rcc);
+
     // Because SysTick is universal to Cortex-M chips it's provided by the `cortex_m` crate
     let syst_delay = delay::Delay::new(cp.SYST, rcc.clocks);
     let (mut spi, mut epd) = epaper::init(
@@ -79,6 +81,7 @@ fn main() -> ! {
 
     unsafe {
         NVIC::unmask(line.interrupt());
+        NVIC::unmask(Interrupt::TIM2);
     }
 
     loop {}
