@@ -9,9 +9,10 @@ use crate::hal::{
     delay,
     exti::{Exti, ExtiLine, GpioLine, TriggerEdge},
     gpio::*,
-    pac::{self, interrupt},
+    pac::{self, interrupt, TIM2},
     prelude::*,
     syscfg,
+    timer::Timer,
 };
 use core::cell::RefCell;
 use cortex_m::interrupt::Mutex;
@@ -26,6 +27,7 @@ static STATUS: Mutex<RefCell<Option<status::StatusLights<PBOut, PBOut, PBOut>>>>
     Mutex::new(RefCell::new(None));
 static BUTTON: Mutex<RefCell<Option<gpiob::PB2<Input<PullUp>>>>> = Mutex::new(RefCell::new(None));
 static MORSE: Mutex<RefCell<Option<machine::MorseMachine>>> = Mutex::new(RefCell::new(None));
+static TIMER: Mutex<RefCell<Option<Timer<TIM2>>>> = Mutex::new(RefCell::new(None));
 
 #[entry]
 fn main() -> ! {
@@ -90,8 +92,20 @@ fn TIM2() {
     cortex_m::interrupt::free(|cs| {
         let mut mm = MORSE.borrow(cs).borrow_mut();
         let mut status = STATUS.borrow(cs).borrow_mut();
+        let mut timer = TIMER.borrow(cs).borrow_mut();
+        timer.as_mut().unwrap().clear_irq();
         if let Some(state_change) = mm.as_mut().unwrap().tick() {
-            // handle state_change
+            match state_change {
+                machine::Transition::Long => status.as_mut().unwrap().on_long(),
+                machine::Transition::VeryLong => status.as_mut().unwrap().busy(),
+                machine::Transition::Transmit => {
+                    // send letters
+                },
+                machine::Transition::Character(ch) => {
+                    timer.as_mut().unwrap().unlisten();
+                    // handle letter
+                }
+            }
         }
     })
 }
@@ -109,10 +123,14 @@ fn EXTI2_3() {
         Exti::unpend(GpioLine::from_raw_line(pin_number).unwrap());
         let mut mm = MORSE.borrow(cs).borrow_mut();
         let mut status = STATUS.borrow(cs).borrow_mut();
+        let mut timer = TIMER.borrow(cs).borrow_mut();
         if is_low {
             mm.as_mut().unwrap().press();
+            timer.as_mut().unwrap().listen();
+            status.as_mut().unwrap().on_short();
         } else {
             mm.as_mut().unwrap().release();
+            status.as_mut().unwrap().off();
         }
     })
 }
