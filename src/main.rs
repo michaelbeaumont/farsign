@@ -91,7 +91,13 @@ fn TIM2() {
         let mut mm = MORSE.borrow(cs).borrow_mut();
         let mut status = STATUS.borrow(cs).borrow_mut();
         if let Some(state_change) = mm.as_mut().unwrap().tick() {
-            // handle state_change
+            match state_change {
+                machine::StateChange::LongPress => status.as_mut().unwrap().on_long(),
+                machine::StateChange::Transmit => status.as_mut().unwrap().busy(),
+                machine::StateChange::NewLetter(ch) => {
+                    // handle letter
+                }
+            }
         }
     })
 }
@@ -111,8 +117,10 @@ fn EXTI2_3() {
         let mut status = STATUS.borrow(cs).borrow_mut();
         if is_low {
             mm.as_mut().unwrap().press();
+            status.as_mut().unwrap().on_short();
         } else {
             mm.as_mut().unwrap().release();
+            status.as_mut().unwrap().off();
         }
     })
 }
