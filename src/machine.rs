@@ -71,11 +71,27 @@ pub enum Transition {
     Transmit,
 }
 
-pub struct MorseMachine {}
+pub struct MorseMachine {
+    button: Button,
+}
 
 impl MorseMachine {
-    fn new() -> Self;
-    fn press(&mut self);
-    fn release(&mut self);
-    fn tick(&mut self) -> Option<Transition>;
+    pub fn new(dot_ticks: u32) -> Self {
+        Self {
+            button: Button::new(dot_ticks, 3 * dot_ticks, 3 * dot_ticks),
+        }
+    }
+
+    pub fn press(&mut self) {
+        self.button.press();
+    }
+
+    pub fn release(&mut self) {
+        self.button.release();
+    }
+
+    pub fn tick(&mut self) -> Option<Transition> {
+        self.button.tick();
+        None
+    }
 }
