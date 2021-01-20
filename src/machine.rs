@@ -1,3 +1,5 @@
+use crate::morse;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PressType {
     Short,
@@ -40,7 +42,7 @@ impl Button {
         self.pressed = true;
     }
 
-    fn state(&self) -> State {
+    fn state(&self, code_empty: bool) -> State {
         if !self.pressed {
             if self.count > self.timeout {
                 State::Idle
@@ -48,7 +50,7 @@ impl Button {
                 State::WaitingOnPress
             }
         } else {
-            State::Press(if self.count > self.very_long_press {
+            State::Press(if self.count > self.very_long_press && code_empty {
                 PressType::VeryLong
             } else if self.count > self.long_press {
                 PressType::Long
@@ -56,6 +58,10 @@ impl Button {
                 PressType::Short
             })
         }
+    }
+
+    fn timeout(&mut self) {
+        self.count = self.timeout;
     }
 
     fn tick(&mut self) {
@@ -73,12 +79,14 @@ pub enum Transition {
 
 pub struct MorseMachine {
     button: Button,
+    current: morse::MorseCode,
 }
 
 impl MorseMachine {
     pub fn new(dot_ticks: u32) -> Self {
         Self {
             button: Button::new(dot_ticks, 3 * dot_ticks, 3 * dot_ticks),
+            current: morse::MorseCode::empty(),
         }
     }
 
@@ -87,7 +95,17 @@ impl MorseMachine {
     }
 
     pub fn release(&mut self) {
+        if let State::Press(p) = self.button.state(self.current.is_empty()) {
+            self.current = match p {
+                PressType::Short => self.current.append_dot(),
+                PressType::Long => self.current.append_dash(),
+                PressType::VeryLong => morse::TRANSMIT,
+            }
+        }
         self.button.release();
+        if self.current == morse::TRANSMIT {
+            self.button.timeout();
+        }
     }
 
     pub fn tick(&mut self) -> Option<Transition> {

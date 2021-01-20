@@ -3,6 +3,7 @@
 
 mod epaper;
 mod machine;
+mod morse;
 mod status;
 
 use crate::hal::{
