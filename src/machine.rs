@@ -109,7 +109,24 @@ impl MorseMachine {
     }
 
     pub fn tick(&mut self) -> Option<Transition> {
+        let is_empty = self.current.is_empty();
+        let previous_state = self.button.state(is_empty);
         self.button.tick();
-        None
+        let current_state = self.button.state(is_empty);
+        match (previous_state, current_state) {
+            (p, n) if p == n => None,
+            (_, State::Idle) => {
+                let character = self.current;
+                self.current = morse::MorseCode::empty();
+                Some(if character == morse::TRANSMIT {
+                    Transition::Transmit
+                } else {
+                    Transition::Character(character.lookup())
+                })
+            }
+            (_, State::Press(PressType::VeryLong)) => Some(Transition::VeryLong),
+            (_, State::Press(PressType::Long)) => Some(Transition::Long),
+            _ => None,
+        }
     }
 }
