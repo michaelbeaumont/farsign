@@ -10,7 +10,7 @@ use crate::hal::{
     delay,
     exti::{Exti, ExtiLine, GpioLine, TriggerEdge},
     gpio::*,
-    pac::{self, interrupt, TIM2},
+    pac::{self, interrupt, Interrupt, TIM2},
     prelude::*,
     syscfg,
     timer::Timer,
@@ -74,14 +74,17 @@ fn main() -> ! {
     let line = GpioLine::from_raw_line(button.pin_number()).unwrap();
     exti.listen_gpio(&mut syscfg, button.port(), line, TriggerEdge::Both);
 
+    let timer = dp.TIM2.timer(10.ms(), &mut rcc);
     cortex_m::interrupt::free(|cs| {
         *STATUS.borrow(cs).borrow_mut() = Some(status);
         *BUTTON.borrow(cs).borrow_mut() = Some(button);
-        *MORSE.borrow(cs).borrow_mut() = Some(machine::MorseMachine::new());
+        *TIMER.borrow(cs).borrow_mut() = Some(timer);
+        *MORSE.borrow(cs).borrow_mut() = Some(machine::MorseMachine::new(20));
     });
 
     unsafe {
         NVIC::unmask(line.interrupt());
+        NVIC::unmask(Interrupt::TIM2);
     }
 
     loop {}
