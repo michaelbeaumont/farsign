@@ -89,6 +89,8 @@ fn main() -> ! {
 #[allow(non_snake_case)]
 #[interrupt]
 fn TIM2() {
+    static mut FLASH: Option<u8> = None;
+    const FLASH_TICKS: u8 = 2;
     cortex_m::interrupt::free(|cs| {
         let mut mm = MORSE.borrow(cs).borrow_mut();
         let mut status = STATUS.borrow(cs).borrow_mut();
@@ -102,9 +104,18 @@ fn TIM2() {
                     // send letters
                 },
                 machine::Transition::Character(ch) => {
-                    timer.as_mut().unwrap().unlisten();
+                    *FLASH = Some(FLASH_TICKS);
+                    status.as_mut().unwrap().busy();
                     // handle letter
                 }
+            }
+        } else if let Some(flash_count) = *FLASH {
+            if flash_count == 0 {
+                *FLASH = None;
+                timer.as_mut().unwrap().unlisten();
+                status.as_mut().unwrap().off();
+            } else {
+                *FLASH = Some(flash_count - 1);
             }
         }
     })
