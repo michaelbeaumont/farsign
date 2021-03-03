@@ -9,13 +9,17 @@ use stm32l0xx_hal as hal;
 mod epaper;
 mod machine;
 mod morse;
+mod radio;
 mod status;
 
-#[app(device = stm32l0::stm32l0x2, peripherals = true)]
+#[app(device = stm32l0::stm32l0x2, peripherals = true, dispatchers = [USART1])]
 mod app {
-    use crate::{epaper, machine, status};
+    use crate::{epaper, machine, status, radio};
+    use farsign::*;
 
+    type Message = Vec<u8, consts::U32>;
     use embedded_time::duration::*;
+    use heapless::{consts, Vec};
 
     use crate::hal::{
         delay,
@@ -39,6 +43,10 @@ mod app {
         timer: Timer<TIM2>,
         #[lock_free]
         morse: machine::MorseTimingMachine,
+        #[lock_free]
+        out: Message,
+        #[lock_free]
+        radio: radio::Lora,
     }
 
     #[local]
@@ -53,9 +61,10 @@ mod app {
         // Configure the clock at the default speed
         let mut rcc = device.RCC.freeze(crate::hal::rcc::Config::default());
 
-        // Get access to the GPIO A & B ports
+        // Get access to the GPIO ports
         let gpioa = device.GPIOA.split(&mut rcc);
         let gpiob = device.GPIOB.split(&mut rcc);
+        let gpioc = device.GPIOC.split(&mut rcc);
 
         // Setup
         let green_pin = gpiob.pb5.into_push_pull_output();
@@ -66,8 +75,20 @@ mod app {
             green_pin.downgrade(),
             blue_pin.downgrade(),
         );
-
+        // Because SysTick is universal to Cortex-M chips it's provided by the `cortex_m` crate
         let mut delay = delay::Delay::new(core.SYST, rcc.clocks);
+
+        let radio = radio::init_radio(
+            device.SPI1,
+            gpiob.pb3,
+            gpioa.pa6,
+            gpioa.pa7,
+            gpioa.pa15,
+            gpioc.pc0,
+            &mut rcc,
+            &mut delay,
+        );
+
         let (mut spi, mut epd) = epaper::init(
             device.SPI2,
             gpiob.pb13,
@@ -86,6 +107,9 @@ mod app {
         let mut syscfg = syscfg::SYSCFG::new(device.SYSCFG, &mut rcc);
         let line = GpioLine::from_raw_line(button.pin_number()).unwrap();
         exti.listen_gpio(&mut syscfg, button.port(), line, TriggerEdge::Both);
+        let dio0 = gpioa.pa0.into_floating_input();
+        let dio_line = GpioLine::from_raw_line(dio0.pin_number()).unwrap();
+        exti.listen_gpio(&mut syscfg, dio0.port(), dio_line, TriggerEdge::Rising);
 
         let timer = Timer::new(device.TIM2, &mut rcc);
         (
@@ -93,13 +117,38 @@ mod app {
                 status,
                 timer,
                 morse: super::machine::MorseTimingMachine::new(DOT_LENGTH),
+                out: Vec(heapless::i::Vec::new()),
+                radio,
             },
             Local { button },
             init::Monotonics(),
         )
     }
 
-    #[task(binds = TIM2, shared = [status, timer, morse])]
+    #[task(capacity = 10, shared = [radio])]
+    fn event(
+        event::Context {
+            shared:
+                event::SharedResources {
+                    radio,
+                    ..
+                },
+        }: event::Context,
+        event: Event<consts::U32>,
+    ) {
+        match event {
+            Event::Transmit(ch) => {
+                radio.transmit_payload(&ch).unwrap();
+            }
+            Event::Receive => {
+                // TODO
+                // push 'static buf to display task
+                //ctx.resources.radio.read_packet_into(&mut rcv).unwrap();
+            }
+        };
+    }
+
+    #[task(binds = TIM2, shared = [status, timer, morse, out])]
     fn timer(
         timer::Context {
             shared:
@@ -107,20 +156,23 @@ mod app {
                     status,
                     mut timer,
                     morse,
+                    mut out,
                     ..
                 },
         }: timer::Context,
     ) {
         if let Some(state_change) = morse.tick(&mut timer) {
             match state_change {
-                super::machine::Transition::Long => status.on_long(),
-                super::machine::Transition::VeryLong => status.busy(),
-                super::machine::Transition::Transmit => {
-                    // send letters
+                crate::machine::Transition::Long => status.on_long(),
+                crate::machine::Transition::VeryLong => status.busy(),
+                crate::machine::Transition::Transmit => {
+                    let transmission: Message = core::mem::replace(&mut out, Vec::new());
+                    let e = farsign::Event::Transmit(transmission);
+                    event::spawn(e).unwrap();
                 }
                 super::machine::Transition::Character(ch) => {
-                    status.flash_busy(&mut timer);
-                    // handle letter
+                    status.flash_busy(timer);
+                    out.push(ch).ok().unwrap();
                 }
             }
         } else {
@@ -149,5 +201,13 @@ mod app {
             morse.release(timer);
             status.off();
         }
+    }
+
+    #[task(binds = EXTI0_1)]
+    fn radio_txrx_done(_: radio_txrx_done::Context) {
+        let e = farsign::Event::Receive;
+        event::spawn(e).unwrap();
+        // TODO
+        Exti::unpend(GpioLine::from_raw_line(0).unwrap());
     }
 }
