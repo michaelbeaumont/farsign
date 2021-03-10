@@ -13,7 +13,7 @@ pub struct MorseCode(u8);
 pub const TRANSMIT: MorseCode = MorseCode(31);
 
 impl MorseCode {
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         MorseCode(0)
     }
     pub fn is_empty(&self) -> bool {

@@ -23,7 +23,7 @@ struct Button {
 }
 
 impl Button {
-    fn new(long_press: u32, very_long_press: u32, timeout: u32) -> Self {
+    const fn new(long_press: u32, very_long_press: u32, timeout: u32) -> Self {
         Self {
             long_press,
             very_long_press,
@@ -83,7 +83,7 @@ pub struct MorseMachine {
 }
 
 impl MorseMachine {
-    pub fn new(dot_ticks: u32) -> Self {
+    pub const fn new(dot_ticks: u32) -> Self {
         Self {
             button: Button::new(dot_ticks, 3 * dot_ticks, 3 * dot_ticks),
             current: morse::MorseCode::empty(),
