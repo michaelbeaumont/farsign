@@ -18,6 +18,7 @@ issue: 3
 [epaper-datasheet]: https://www.waveshare.com/wiki/File:2.9inch-e-paper-b-specification.pdf
 [epd-waveshare]: https://github.com/caemor/epd-waveshare
 [module-datasheet]: https://wireless.murata.com/pub/RFM/data/type_abz.pdf
+[next]: embedded-rust-with-lorawan-and-epaper-4
 
 In the [previous post][previous], we worked on getting the display powered up
 and displaying a splash on startup.
@@ -271,8 +272,10 @@ it out!
 Hopefully this third post served as an introductory but not completely trivial
 example of translating the behavior of an embedded
 device into a state machine and then into code.
-The next post will cover keeping a stack of encoded letters and handling the
-`TRANSMIT` value to broadcast over the radio.
+
+The [next post][next] covers moving over to RTIC and some refactors.
+
+---
 
 #### `MorseCode` implementation
 
@@ -284,4 +287,4 @@ branches as new dots/dashes come in.
 
 #### Edits
 
-* Improved `machine::Transition` variants.
+- Improved `machine::Transition` variants.
