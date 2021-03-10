@@ -6,146 +6,141 @@ mod machine;
 mod morse;
 mod status;
 
+use panic_semihosting as _;
+use rtic::app;
+use stm32l0xx_hal as hal;
+
 use crate::hal::{
     delay,
     exti::{Exti, ExtiLine, GpioLine, TriggerEdge},
     gpio::*,
-    pac::{self, interrupt, Interrupt, TIM2},
+    pac::TIM2,
     prelude::*,
-    syscfg,
+    syscfg, time,
     timer::Timer,
 };
-use core::cell::RefCell;
-use cortex_m::interrupt::Mutex;
-use cortex_m::peripheral::NVIC;
-use cortex_m_rt::entry;
-use panic_semihosting as _;
-use stm32l0xx_hal as hal;
 
 type PBOut = gpiob::PB<Output<PushPull>>;
 
-static STATUS: Mutex<RefCell<Option<status::StatusLights<PBOut, PBOut, PBOut>>>> =
-    Mutex::new(RefCell::new(None));
-static BUTTON: Mutex<RefCell<Option<gpiob::PB2<Input<PullUp>>>>> = Mutex::new(RefCell::new(None));
-static MORSE: Mutex<RefCell<Option<machine::MorseMachine>>> = Mutex::new(RefCell::new(None));
-static TIMER: Mutex<RefCell<Option<Timer<TIM2>>>> = Mutex::new(RefCell::new(None));
+const FLASH_TICKS: u8 = 2;
+const DOT_TICKS: u32 = 20;
+const TICK_LENGTH: time::MicroSeconds = time::MicroSeconds(10_000);
 
-#[entry]
-fn main() -> ! {
-    // Get one-time access to our peripherals
-    let cp = cortex_m::Peripherals::take().unwrap();
-    let dp = pac::Peripherals::take().unwrap();
-
-    // Configure the clock at the default speed
-    let mut rcc = dp.RCC.freeze(hal::rcc::Config::default());
-
-    // Get access to the GPIO A & B ports
-    let gpioa = dp.GPIOA.split(&mut rcc);
-    let gpiob = dp.GPIOB.split(&mut rcc);
-
-    // Setup and turn on green LED
-    let green_pin = gpiob.pb5.into_push_pull_output();
-    let blue_pin = gpiob.pb6.into_push_pull_output();
-    let red_pin = gpiob.pb7.into_push_pull_output();
-    let status = status::StatusLights::new(
-        red_pin.downgrade(),
-        green_pin.downgrade(),
-        blue_pin.downgrade(),
-    );
-
-    // Because SysTick is universal to Cortex-M chips it's provided by the `cortex_m` crate
-    let syst_delay = delay::Delay::new(cp.SYST, rcc.clocks);
-    let (mut spi, mut epd) = epaper::init(
-        dp.SPI2,
-        gpiob.pb13,
-        gpiob.pb15,
-        gpiob.pb12,
-        gpioa.pa2.into_floating_input(),
-        gpioa.pa10.into_push_pull_output(),
-        gpioa.pa8.into_push_pull_output(),
-        &mut rcc,
-        syst_delay,
-    );
-    epaper::display_startup(&mut spi, &mut epd);
-
-    let button = gpiob.pb2.into_pull_up_input();
-    let mut exti = Exti::new(dp.EXTI);
-    let mut syscfg = syscfg::SYSCFG::new(dp.SYSCFG, &mut rcc);
-    let line = GpioLine::from_raw_line(button.pin_number()).unwrap();
-    exti.listen_gpio(&mut syscfg, button.port(), line, TriggerEdge::Both);
-
-    let timer = dp.TIM2.timer(10.ms(), &mut rcc);
-    cortex_m::interrupt::free(|cs| {
-        *STATUS.borrow(cs).borrow_mut() = Some(status);
-        *BUTTON.borrow(cs).borrow_mut() = Some(button);
-        *TIMER.borrow(cs).borrow_mut() = Some(timer);
-        *MORSE.borrow(cs).borrow_mut() = Some(machine::MorseMachine::new(20));
-    });
-
-    unsafe {
-        NVIC::unmask(line.interrupt());
-        NVIC::unmask(Interrupt::TIM2);
+#[app(device = stm32l0::stm32l0x2, peripherals = true)]
+const APP: () = {
+    struct Resources {
+        button: gpiob::PB2<Input<PullUp>>,
+        status: status::StatusLights<PBOut, PBOut, PBOut>,
+        timer: Timer<TIM2>,
+        #[init(machine::MorseMachine::new(DOT_TICKS))]
+        morse: machine::MorseMachine,
     }
 
-    loop {}
-}
+    #[init]
+    fn init(init::Context { core, device }: init::Context) -> init::LateResources {
+        // Configure the clock at the default speed
+        let mut rcc = device.RCC.freeze(hal::rcc::Config::default());
 
-#[allow(non_snake_case)]
-#[interrupt]
-fn TIM2() {
-    static mut FLASH: Option<u8> = None;
-    const FLASH_TICKS: u8 = 2;
-    cortex_m::interrupt::free(|cs| {
-        let mut mm = MORSE.borrow(cs).borrow_mut();
-        let mut status = STATUS.borrow(cs).borrow_mut();
-        let mut timer = TIMER.borrow(cs).borrow_mut();
-        timer.as_mut().unwrap().clear_irq();
-        if let Some(state_change) = mm.as_mut().unwrap().tick() {
+        // Get access to the GPIO A & B ports
+        let gpioa = device.GPIOA.split(&mut rcc);
+        let gpiob = device.GPIOB.split(&mut rcc);
+
+        // Setup
+        let green_pin = gpiob.pb5.into_push_pull_output();
+        let blue_pin = gpiob.pb6.into_push_pull_output();
+        let red_pin = gpiob.pb7.into_push_pull_output();
+        let status = status::StatusLights::new(
+            red_pin.downgrade(),
+            green_pin.downgrade(),
+            blue_pin.downgrade(),
+        );
+
+        let delay = delay::Delay::new(core.SYST, rcc.clocks);
+        let (mut spi, mut epd) = epaper::init(
+            device.SPI2,
+            gpiob.pb13,
+            gpiob.pb15,
+            gpiob.pb12,
+            gpioa.pa2.into_floating_input(),
+            gpioa.pa10.into_push_pull_output(),
+            gpioa.pa8.into_push_pull_output(),
+            &mut rcc,
+            delay,
+        );
+        epaper::display_startup(&mut spi, &mut epd);
+
+        let button = gpiob.pb2.into_pull_up_input();
+        let mut exti = Exti::new(device.EXTI);
+        let mut syscfg = syscfg::SYSCFG::new(device.SYSCFG, &mut rcc);
+        let line = GpioLine::from_raw_line(button.pin_number()).unwrap();
+        exti.listen_gpio(&mut syscfg, button.port(), line, TriggerEdge::Both);
+
+        init::LateResources {
+            button,
+            status,
+            timer: device.TIM2.timer(TICK_LENGTH, &mut rcc),
+        }
+    }
+
+    #[task(binds = TIM2, resources = [status, timer, morse])]
+    fn timer(
+        timer::Context {
+            resources:
+                timer::Resources {
+                    status,
+                    timer,
+                    morse,
+                    ..
+                },
+        }: timer::Context,
+    ) {
+        static mut FLASH: Option<u8> = None;
+        timer.clear_irq();
+        if let Some(state_change) = morse.tick() {
             match state_change {
-                machine::Transition::Long => status.as_mut().unwrap().on_long(),
-                machine::Transition::VeryLong => status.as_mut().unwrap().busy(),
+                machine::Transition::Long => status.on_long(),
+                machine::Transition::VeryLong => status.busy(),
                 machine::Transition::Transmit => {
                     // send letters
-                },
+                }
                 machine::Transition::Character(ch) => {
                     *FLASH = Some(FLASH_TICKS);
-                    status.as_mut().unwrap().busy();
+                    status.busy();
                     // handle letter
                 }
             }
         } else if let Some(flash_count) = *FLASH {
             if flash_count == 0 {
                 *FLASH = None;
-                timer.as_mut().unwrap().unlisten();
-                status.as_mut().unwrap().off();
+                timer.unlisten();
+                status.off();
             } else {
                 *FLASH = Some(flash_count - 1);
             }
         }
-    })
-}
+    }
 
-#[allow(non_snake_case)]
-#[interrupt]
-fn EXTI2_3() {
-    cortex_m::interrupt::free(|cs| {
-        let (pin_number, is_low) = BUTTON
-            .borrow(cs)
-            .borrow()
-            .as_ref()
-            .map(|p| (p.pin_number(), p.is_low().unwrap()))
-            .unwrap();
-        Exti::unpend(GpioLine::from_raw_line(pin_number).unwrap());
-        let mut mm = MORSE.borrow(cs).borrow_mut();
-        let mut status = STATUS.borrow(cs).borrow_mut();
-        let mut timer = TIMER.borrow(cs).borrow_mut();
-        if is_low {
-            mm.as_mut().unwrap().press();
-            timer.as_mut().unwrap().listen();
-            status.as_mut().unwrap().on_short();
+    #[task(binds = EXTI2_3, resources = [button, status, timer, morse])]
+    fn button(
+        button::Context {
+            resources:
+                button::Resources {
+                    button,
+                    status,
+                    timer,
+                    morse,
+                    ..
+                },
+        }: button::Context,
+    ) {
+        Exti::unpend(GpioLine::from_raw_line(button.pin_number()).unwrap());
+        if button.is_low().unwrap() {
+            morse.press();
+            timer.listen();
+            status.on_short();
         } else {
-            mm.as_mut().unwrap().release();
-            status.as_mut().unwrap().off();
+            morse.release();
+            status.off();
         }
-    })
-}
+    }
+};
