@@ -1,20 +1,23 @@
 SHELL := /bin/bash
 markary := ../markary
+markary.yaml := $(markary)/markary.yaml
+tmpconfig := tmpconfig.yaml
 
-pages:
-	mkdir -p docs; \
-	tmpdef=$$(mktemp); \
-	MARKARY=${markary} envsubst < ${markary}/markary.yaml > $${tmpdef}; \
-	for post in posts/*.md; do \
-	  pagename="$$(basename $${post%.md})"; \
-	  pandoc $${post} \
-	    --include-before-body=header.html \
-	    --resource-path=.:docs \
-	    --css=header.css \
-	    --defaults=$${tmpdef} \
-	    -o "docs/$${pagename}.html"; \
-	done
+all: $(patsubst posts/%.md,docs/%.html,$(wildcard posts/*.md))
+
+docs:
+	mkdir docs
+
+$(tmpconfig): $(markary.yaml)
+	MARKARY=${markary} envsubst < "$<" > $(tmpconfig)
+
+docs/%.html: posts/%.md $(markary.yaml) header.html header.css docs/media | docs $(tmpconfig)
+	pandoc "$<" \
+	  --include-before-body=header.html \
+	  --resource-path=.:docs \
+	  --css=header.css \
+	  --defaults=$(tmpconfig) \
+	  -o "$@"
 
 watch:
-	while inotifywait -r -e move_self posts/*.md; do make pages; done
-
+	while inotifywait -r -e move_self posts/*.md; do make; done
