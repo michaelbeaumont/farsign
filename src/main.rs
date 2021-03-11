@@ -22,9 +22,7 @@ use crate::hal::{
 
 type PBOut = gpiob::PB<Output<PushPull>>;
 
-const FLASH_TICKS: u8 = 2;
-const DOT_TICKS: u32 = 20;
-const TICK_LENGTH: time::MicroSeconds = time::MicroSeconds(10_000);
+const DOT_LENGTH: time::MicroSeconds = time::MicroSeconds(200_000);
 
 #[app(device = stm32l0::stm32l0x2, peripherals = true)]
 const APP: () = {
@@ -32,8 +30,8 @@ const APP: () = {
         button: gpiob::PB2<Input<PullUp>>,
         status: status::StatusLights<PBOut, PBOut, PBOut>,
         timer: Timer<TIM2>,
-        #[init(machine::MorseMachine::new(DOT_TICKS))]
-        morse: machine::MorseMachine,
+        #[init(machine::MorseTimingMachine::new(DOT_LENGTH))]
+        morse: machine::MorseTimingMachine,
     }
 
     #[init]
@@ -75,10 +73,11 @@ const APP: () = {
         let line = GpioLine::from_raw_line(button.pin_number()).unwrap();
         exti.listen_gpio(&mut syscfg, button.port(), line, TriggerEdge::Both);
 
+        let timer = Timer::new(device.TIM2, &mut rcc);
         init::LateResources {
             button,
             status,
-            timer: device.TIM2.timer(TICK_LENGTH, &mut rcc),
+            timer,
         }
     }
 
@@ -94,9 +93,8 @@ const APP: () = {
                 },
         }: timer::Context,
     ) {
-        static mut FLASH: Option<u8> = None;
-        timer.clear_irq();
-        if let Some(state_change) = morse.tick() {
+        static mut TIMEOUT_FLASH: Option<bool> = None;
+        if let Some(state_change) = morse.tick(timer) {
             match state_change {
                 machine::Transition::Long => status.on_long(),
                 machine::Transition::VeryLong => status.busy(),
@@ -104,18 +102,21 @@ const APP: () = {
                     // send letters
                 }
                 machine::Transition::Character(ch) => {
-                    *FLASH = Some(FLASH_TICKS);
                     status.busy();
+                    *TIMEOUT_FLASH = Some(true);
+                    timer.start(20.ms());
+                    timer.listen();
+                    hprintln!("{}", ch as char).unwrap();
                     // handle letter
                 }
             }
-        } else if let Some(flash_count) = *FLASH {
-            if flash_count == 0 {
-                *FLASH = None;
-                timer.unlisten();
-                status.off();
+        } else if let Some(flashing) = *TIMEOUT_FLASH {
+            if flashing {
+                *TIMEOUT_FLASH = Some(false);
             } else {
-                *FLASH = Some(flash_count - 1);
+                status.off();
+                *TIMEOUT_FLASH = None;
+                timer.unlisten();
             }
         }
     }
@@ -135,11 +136,10 @@ const APP: () = {
     ) {
         Exti::unpend(GpioLine::from_raw_line(button.pin_number()).unwrap());
         if button.is_low().unwrap() {
-            morse.press();
-            timer.listen();
+            morse.press(timer);
             status.on_short();
         } else {
-            morse.release();
+            morse.release(timer);
             status.off();
         }
     }
