@@ -93,7 +93,6 @@ const APP: () = {
                 },
         }: timer::Context,
     ) {
-        static mut TIMEOUT_FLASH: Option<bool> = None;
         if let Some(state_change) = morse.tick(timer) {
             match state_change {
                 machine::Transition::Long => status.on_long(),
@@ -102,22 +101,12 @@ const APP: () = {
                     // send letters
                 }
                 machine::Transition::Character(ch) => {
-                    status.busy();
-                    *TIMEOUT_FLASH = Some(true);
-                    timer.start(20.ms());
-                    timer.listen();
-                    hprintln!("{}", ch as char).unwrap();
+                    status.flash_busy(timer);
                     // handle letter
                 }
             }
-        } else if let Some(flashing) = *TIMEOUT_FLASH {
-            if flashing {
-                *TIMEOUT_FLASH = Some(false);
-            } else {
-                status.off();
-                *TIMEOUT_FLASH = None;
-                timer.unlisten();
-            }
+        } else {
+            status.flash_tick(timer);
         }
     }
 
