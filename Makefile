@@ -11,7 +11,7 @@ docs:
 $(tmpconfig): $(markary.yaml)
 	MARKARY=${markary} envsubst < "$<" > $(tmpconfig)
 
-docs/%.html: posts/%.md $(markary.yaml) header.html header.css docs/media | docs $(tmpconfig)
+docs/%.html: posts/%.md $(markary) header.html header.css docs/media | docs $(tmpconfig)
 	pandoc "$<" \
 	  --include-before-body=header.html \
 	  --resource-path=.:docs \
