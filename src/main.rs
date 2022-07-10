@@ -54,7 +54,7 @@ const APP: () = {
             blue_pin.downgrade(),
         );
 
-        let delay = delay::Delay::new(core.SYST, rcc.clocks);
+        let mut delay = delay::Delay::new(core.SYST, rcc.clocks);
         let (mut spi, mut epd) = epaper::init(
             device.SPI2,
             gpiob.pb13,
@@ -64,9 +64,9 @@ const APP: () = {
             gpioa.pa10.into_push_pull_output(),
             gpioa.pa8.into_push_pull_output(),
             &mut rcc,
-            delay,
+            &mut delay,
         );
-        epaper::display_startup(&mut spi, &mut epd);
+        epaper::display_startup(&mut spi, &mut delay, &mut epd);
 
         let button = gpiob.pb2.into_pull_up_input();
         let mut exti = Exti::new(device.EXTI);

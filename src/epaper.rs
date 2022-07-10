@@ -6,14 +6,14 @@ use crate::hal::{
     spi::{NoMiso, Spi},
 };
 use embedded_graphics::{
-    fonts::{Font24x32, Text},
+    mono_font::{ascii::FONT_6X10, MonoTextStyle},
+    text::{Text, TextStyleBuilder},
     pixelcolor::BinaryColor::On as Black,
     prelude::*,
-    style,
 };
 use embedded_hal::blocking::delay::*;
 use epd_waveshare::{
-    epd2in9bc::{Display2in9bc, EPD2in9bc},
+    epd2in9bc::{Display2in9bc, Epd2in9bc},
     prelude::*,
     SPI_MODE,
 };
@@ -29,10 +29,10 @@ pub fn init<DELAY, BUSY, DC, RST>(
     dc: DC,
     rst: RST,
     rcc: &mut Rcc,
-    mut delay: DELAY,
+    delay: &mut DELAY,
 ) -> (
     SPI,
-    EPD2in9bc<SPI, gpiob::PB12<Output<PushPull>>, BUSY, DC, RST>,
+    Epd2in9bc<SPI, gpiob::PB12<Output<PushPull>>, BUSY, DC, RST, DELAY>,
 )
 where
     DELAY: DelayMs<u8>,
@@ -48,42 +48,41 @@ where
         rcc.clocks.sys_clk(),
         rcc,
     );
-    let epd = EPD2in9bc::new(
+    let epd = Epd2in9bc::new(
         &mut spi,
         cs.into_push_pull_output(),
         busy,
         dc,
         rst,
-        &mut delay,
+        delay,
     )
     .unwrap();
     (spi, epd)
 }
 
-pub type EPD = EPD2in9bc<
+pub type Epd<DELAY> = Epd2in9bc<
     SPI,
     gpiob::PB12<Output<PushPull>>,
     gpioa::PA2<Input<Floating>>,
     gpioa::PA10<Output<PushPull>>,
     gpioa::PA8<Output<PushPull>>,
+    DELAY,
 >;
 
-pub fn display_startup(spi: &mut SPI, epd: &mut EPD) {
+pub fn display_startup<DELAY: DelayMs<u8>>(spi: &mut SPI, delay: &mut DELAY, epd: &mut Epd<DELAY>) {
     let mut display = Display2in9bc::default();
     // the rotation is used when rendering our text
     // and shapes into a bitmap
     display.set_rotation(DisplayRotation::Rotate90);
     // send a uniform chromatic and achromatic frame
-    epd.clear_frame(spi).expect("clear frame failed");
-    let style = style::TextStyleBuilder::new(Font24x32)
-        .text_color(Black)
-        .build();
-    let _ = Text::new("Farsign", Point::new(50, 35))
-        .into_styled(style)
+    epd.clear_frame(spi, delay).expect("clear frame failed");
+    let font = MonoTextStyle::new(&FONT_6X10, Black);
+    let style = TextStyleBuilder::new().build();
+    let _ = Text::with_text_style("Farsign", Point::new(50, 35), font, style)
         .draw(&mut display);
     // render our display to a buffer and set it as
     // our chromatic frame
     epd.update_chromatic_frame(spi, display.buffer())
         .expect("send text failed");
-    epd.display_frame(spi).expect("display startup failed");
+    epd.display_frame(spi, delay).expect("display startup failed");
 }
