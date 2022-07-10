@@ -1,6 +1,6 @@
 use crate::hal::prelude::*;
 use crate::hal::{pac::TIM2, timer::Timer};
-use void::Void;
+use core::convert::Infallible;
 
 pub struct StatusLights<R, G, B> {
     red: R,
@@ -9,7 +9,7 @@ pub struct StatusLights<R, G, B> {
     flasher: Flasher,
 }
 
-impl<R: OutputPin<Error = Void>, G: OutputPin<Error = Void>, B: OutputPin<Error = Void>>
+impl<R: OutputPin<Error = Infallible>, G: OutputPin<Error = Infallible>, B: OutputPin<Error = Infallible>>
     StatusLights<R, G, B>
 {
     pub fn new(red: R, green: G, blue: B) -> Self {
@@ -68,7 +68,7 @@ impl Flasher {
 
     fn flash(&mut self, timer: &mut Timer<TIM2>) {
         self.flashing = true;
-        timer.start(10.ms());
+        timer.start(100_u32.Hz());
         timer.listen();
     }
 
