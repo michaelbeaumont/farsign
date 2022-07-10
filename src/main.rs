@@ -9,6 +9,7 @@ mod status;
 use panic_semihosting as _;
 use rtic::app;
 use stm32l0xx_hal as hal;
+use embedded_time::duration::*;
 
 use crate::hal::{
     delay,
@@ -16,13 +17,13 @@ use crate::hal::{
     gpio::*,
     pac::TIM2,
     prelude::*,
-    syscfg, time,
+    syscfg,
     timer::Timer,
 };
 
-type PBOut = gpiob::PB<Output<PushPull>>;
+type PBOut = Pin<Output<PushPull>>;
 
-const DOT_LENGTH: time::MicroSeconds = time::MicroSeconds(200_000);
+const DOT_LENGTH: Microseconds = Microseconds(200_000);
 
 #[app(device = stm32l0::stm32l0x2, peripherals = true)]
 const APP: () = {

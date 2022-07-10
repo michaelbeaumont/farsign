@@ -1,8 +1,8 @@
 use crate::hal::pac::TIM2;
 use crate::hal::{
-    time::{MicroSeconds, U32Ext},
     timer::Timer,
 };
+use embedded_time::{duration::*, rate::*};
 use crate::morse;
 use embedded_hal::timer::CountDown;
 
@@ -225,18 +225,18 @@ impl MorseTimelessMachine {
 }
 
 pub struct MorseTimingMachine {
-    long_press: MicroSeconds,
-    very_long_press: MicroSeconds,
-    timeout: MicroSeconds,
+    long_press: Microseconds,
+    very_long_press: Microseconds,
+    timeout: Microseconds,
     machine: MorseTimelessMachine,
 }
 
 impl MorseTimingMachine {
-    pub const fn new(dot_length: MicroSeconds) -> Self {
+    pub const fn new(dot_length: Microseconds) -> Self {
         Self {
             long_press: dot_length,
-            very_long_press: MicroSeconds(2 * dot_length.0),
-            timeout: MicroSeconds(3 * dot_length.0),
+            very_long_press: Microseconds(2 * dot_length.0),
+            timeout: Microseconds(3 * dot_length.0),
             machine: MorseTimelessMachine::new(),
         }
     }
@@ -244,19 +244,19 @@ impl MorseTimingMachine {
     pub fn press(&mut self, timer: &mut Timer<TIM2>) {
         self.machine.press();
         timer.clear_irq();
-        timer.start(self.long_press);
+        timer.start(self.long_press.to_rate::<Hertz>().unwrap());
         timer.listen();
     }
 
     pub fn release(&mut self, timer: &mut Timer<TIM2>) {
         self.machine.release();
         timer.clear_irq();
-        let timeout = if self.machine.current == morse::TRANSMIT {
-            1.ms()
+        let timeout  = if self.machine.current == morse::TRANSMIT {
+            1_u32.microseconds()
         } else {
             self.timeout
         };
-        timer.start(timeout);
+        timer.start(timeout.to_rate::<Hertz>().unwrap());
         timer.listen();
     }
 
@@ -265,7 +265,7 @@ impl MorseTimingMachine {
         let transition = self.machine.tick();
         if let Some(ref state_change) = transition {
             match state_change {
-                Transition::Long => timer.start(self.very_long_press),
+                Transition::Long => timer.start(self.very_long_press.to_rate::<Hertz>().unwrap()),
                 Transition::VeryLong | Transition::Transmit | Transition::Character(_) => {
                     timer.unlisten()
                 }

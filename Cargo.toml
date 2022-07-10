@@ -12,15 +12,15 @@ license = "MIT"
 [dependencies]
 embedded-graphics = "^0.6.1"
 embedded-hal = "^0.2.4"
+embedded-time="0.12.0"
 epd-waveshare = { version= "0.4.0" }
-stm32l0xx-hal = {version = "0.6.2", features = ["stm32l0x2", "rt"]}
-stm32l0 = "*"
-cortex-m = "0.6.3"
+stm32l0xx-hal = { version = "0.8.0", features = ["stm32l0x2", "rt",  "mcu-STM32L072CZYx"] }
+stm32l0 = { version = "^0.13.0", features = ["stm32l0x2", "rt"]}
+cortex-m = "0.7.1"
 cortex-m-rt = "0.6.13"
 cortex-m-semihosting = "0.3.5"
 panic-semihosting = "*"
 cortex-m-rtic = "*"
-void = { version = "*", default-features = false }
 
 [profile.release]
 codegen-units = 1
