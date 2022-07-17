@@ -1,44 +1,57 @@
 #![no_main]
 #![no_std]
 
+use panic_semihosting as _;
+use rtic::app;
+
+use stm32l0xx_hal as hal;
+
 mod epaper;
 mod machine;
 mod morse;
 mod status;
 
-use panic_semihosting as _;
-use rtic::app;
-use stm32l0xx_hal as hal;
-use embedded_time::duration::*;
-
-use crate::hal::{
-    delay,
-    exti::{Exti, ExtiLine, GpioLine, TriggerEdge},
-    gpio::*,
-    pac::TIM2,
-    prelude::*,
-    syscfg,
-    timer::Timer,
-};
-
-type PBOut = Pin<Output<PushPull>>;
-
-const DOT_LENGTH: Microseconds = Microseconds(200_000);
-
 #[app(device = stm32l0::stm32l0x2, peripherals = true)]
-const APP: () = {
+mod app {
+    use crate::{epaper, machine, status};
+
+    use embedded_time::duration::*;
+
+    use crate::hal::{
+        delay,
+        exti::{Exti, ExtiLine, GpioLine, TriggerEdge},
+        gpio::*,
+        pac::TIM2,
+        prelude::*,
+        syscfg,
+        timer::Timer,
+    };
+
+    type PBOut = Pin<Output<PushPull>>;
+
+    const DOT_LENGTH: Microseconds = Microseconds(200_000);
+
+    #[shared]
     struct Resources {
-        button: gpiob::PB2<Input<PullUp>>,
+        #[lock_free]
         status: status::StatusLights<PBOut, PBOut, PBOut>,
+        #[lock_free]
         timer: Timer<TIM2>,
-        #[init(machine::MorseTimingMachine::new(DOT_LENGTH))]
+        #[lock_free]
         morse: machine::MorseTimingMachine,
     }
 
+    #[local]
+    struct Local {
+        button: gpiob::PB2<Input<PullUp>>,
+    }
+
     #[init]
-    fn init(init::Context { core, device }: init::Context) -> init::LateResources {
+    fn init(
+        init::Context { core, device, .. }: init::Context,
+    ) -> (Resources, Local, init::Monotonics) {
         // Configure the clock at the default speed
-        let mut rcc = device.RCC.freeze(hal::rcc::Config::default());
+        let mut rcc = device.RCC.freeze(crate::hal::rcc::Config::default());
 
         // Get access to the GPIO A & B ports
         let gpioa = device.GPIOA.split(&mut rcc);
@@ -75,48 +88,52 @@ const APP: () = {
         exti.listen_gpio(&mut syscfg, button.port(), line, TriggerEdge::Both);
 
         let timer = Timer::new(device.TIM2, &mut rcc);
-        init::LateResources {
-            button,
-            status,
-            timer,
-        }
+        (
+            Resources {
+                status,
+                timer,
+                morse: super::machine::MorseTimingMachine::new(DOT_LENGTH),
+            },
+            Local { button },
+            init::Monotonics(),
+        )
     }
 
-    #[task(binds = TIM2, resources = [status, timer, morse])]
+    #[task(binds = TIM2, shared = [status, timer, morse])]
     fn timer(
         timer::Context {
-            resources:
-                timer::Resources {
+            shared:
+                timer::SharedResources {
                     status,
-                    timer,
+                    mut timer,
                     morse,
                     ..
                 },
         }: timer::Context,
     ) {
-        if let Some(state_change) = morse.tick(timer) {
+        if let Some(state_change) = morse.tick(&mut timer) {
             match state_change {
-                machine::Transition::Long => status.on_long(),
-                machine::Transition::VeryLong => status.busy(),
-                machine::Transition::Transmit => {
+                super::machine::Transition::Long => status.on_long(),
+                super::machine::Transition::VeryLong => status.busy(),
+                super::machine::Transition::Transmit => {
                     // send letters
                 }
-                machine::Transition::Character(ch) => {
-                    status.flash_busy(timer);
+                super::machine::Transition::Character(ch) => {
+                    status.flash_busy(&mut timer);
                     // handle letter
                 }
             }
         } else {
-            status.flash_tick(timer);
+            status.flash_tick(&mut timer);
         }
     }
 
-    #[task(binds = EXTI2_3, resources = [button, status, timer, morse])]
+    #[task(binds = EXTI2_3, local = [button], shared = [status, timer, morse])]
     fn button(
         button::Context {
-            resources:
-                button::Resources {
-                    button,
+            local: button::LocalResources { button },
+            shared:
+                button::SharedResources {
                     status,
                     timer,
                     morse,
@@ -133,4 +150,4 @@ const APP: () = {
             status.off();
         }
     }
-};
+}

@@ -20,7 +20,7 @@ cortex-m = "0.7.5"
 cortex-m-rt = "0.6.13"
 cortex-m-semihosting = "0.5.0"
 panic-semihosting = "*"
-cortex-m-rtic = "^0.5.0"
+cortex-m-rtic = "^1.1.0"
 
 [profile.release]
 codegen-units = 1
